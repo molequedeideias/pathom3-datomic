@@ -60,6 +60,7 @@
        (filter :db/unique)
        (into #{} (map :db/ident))))
 
+
 (def registry
   [(pbir/single-attr-with-env-resolver ::conn ::db raw-datomic-db)
    (pbir/single-attr-with-env-resolver ::db ::schema db->schema)
@@ -98,13 +99,13 @@
   Otherwise will look for some attribute that is a unique and is on
   the map, in case of multiple one will be selected by random. The
   format of the unique return is [:attribute value]."
-  [{::keys [schema-uniques admin-mode?]} m]
-  (if (and (contains? m :db/id) admin-mode?)
-    (:db/id m)
-
-    (let [available (set/intersection schema-uniques (into #{} (keys m)))]
-      (if-let [attr (first available)]
-        [attr (get m attr)]))))
+  [{::keys [schema-uniques admin-mode?]} input]
+  (let [m (:com.wsscode.pathom3.connect.runner/node-resolver-input input)]
+    (if (and (contains? m :db/id) admin-mode?)
+      (:db/id m)
+      (let [available (set/intersection schema-uniques (into #{} (keys m)))]
+        (when-let [attr (first available)]
+          [attr (get m attr)])))))
 
 (defn post-process-entity
   "Post process the result from the datomic query. Operations that it does:
@@ -149,25 +150,25 @@
 
 ; region query helpers
 
-(defn datomic-subquery-q
-  "Compute nested sub-query using the planner capabilities and run the query on Datomic
+#_(defn datomic-subquery-q
+    "Compute nested sub-query using the planner capabilities and run the query on Datomic
   pulling the necessary data out."
-  [{::keys [db] ::pcp/keys [node graph] :as env} {:keys [::pco/op-name] ::p.attr/keys [attribute]} query]
-  (let [attr    (or attribute (-> node ::pcp/expects ffirst))
-        ast     (get-in graph [::pcp/index-ast attr])
-        sub-ast (-> (pcp/compute-dynamic-resolver-nested-requirements
-                      (assoc env :edn-query-language.ast/node ast
-                        ::pco/dynamic-name op-name
-                        ::p.attr/attribute attr
-                        ::pco/op-name (::pco/op-name node)))
-                    (pfsd/shape-descriptor->ast))
-        config  (get-in env [::datomic-config op-name])]
-    (->> (raw-datomic-q config (assoc query :find [(list 'pull '?e (inject-ident-subqueries config sub-ast))])
-                        (or db (raw-datomic-db config (::conn config))))
-         (map (comp #(post-process-entity config %) #(or % {}) first)))))
+    [{::keys [db] ::pcp/keys [node graph] :as env} {:keys [::pco/op-name] ::p.attr/keys [attribute]} query]
+    (let [attr    (or attribute (-> node ::pcp/expects ffirst))
+          ast     (get-in graph [::pcp/index-ast attr])
+          sub-ast (-> (pcp/compute-dynamic-resolver-nested-requirements
+                        (assoc env :edn-query-language.ast/node ast
+                          ::pco/dynamic-name op-name
+                          ::p.attr/attribute attr
+                          ::pco/op-name (::pco/op-name node)))
+                      (pfsd/shape-descriptor->ast))
+          config  (get-in env [::datomic-config op-name])]
+      (->> (raw-datomic-q config (assoc query :find [(list 'pull '?e (inject-ident-subqueries config sub-ast))])
+                          (or db (raw-datomic-db config (::conn config))))
+           (map (comp #(post-process-entity config %) #(or % {}) first)))))
 
-(defn query-entities
-  "Use this helper from inside a resolver to run a Datomic query.
+#_(defn query-entities
+    "Use this helper from inside a resolver to run a Datomic query.
   You must send dquery using a datalog map format. The :find section
   of the query will be populated by this function with [[pull ?e SUB_QUERY] '...].
   The SUB_QUERY will be computed by Pathom, considering the current user sub-query.
@@ -188,14 +189,14 @@
           [:country/name]}]}]
   The sub-query will be send to Datomic, filtering out unsupported keys
   like `:not-in/datomic`."
-  [env datomic-source dquery]
-  (vec (datomic-subquery-q env datomic-source dquery)))
+    [env datomic-source dquery]
+    (vec (datomic-subquery-q env datomic-source dquery)))
 
-(defn query-entity
-  "Like query-entities, but returns a single result. This leverage Datomic
+#_(defn query-entity
+    "Like query-entities, but returns a single result. This leverage Datomic
   single result :find, meaning it is effectively more efficient than query-entities."
-  [env datomic-source dquery]
-  (first (datomic-subquery-q env datomic-source dquery)))
+    [env datomic-source dquery]
+    (first (datomic-subquery-q env datomic-source dquery)))
 
 (defn make-resolver [op-name config output-attr f-or-query query-fn]
   (pco/resolver op-name
@@ -210,11 +211,11 @@
                    (f-or-query env input)
                    f-or-query))})))
 
-(defn entity-resolver [op-name config output-attr f-or-query]
-  (make-resolver op-name config output-attr f-or-query query-entity))
+#_(defn entity-resolver [op-name config output-attr f-or-query]
+    (make-resolver op-name config output-attr f-or-query query-entity))
 
-(defn entities-resolver [op-name config output-attr f-or-query]
-  (make-resolver op-name config output-attr f-or-query query-entities))
+#_(defn entities-resolver [op-name config output-attr f-or-query]
+    (make-resolver op-name config output-attr f-or-query query-entities))
 
 ; endregion
 
