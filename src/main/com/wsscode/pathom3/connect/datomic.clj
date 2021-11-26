@@ -76,7 +76,7 @@
   ([config]
    (psm/smart-map (merge config-env config) config))
   ([env config]
-   (psm/smart-map (merge env config-env config) config)))
+   (psm/smart-map (merge env config) config)))
 
 
 
