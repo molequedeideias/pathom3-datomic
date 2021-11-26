@@ -73,8 +73,12 @@
 
 (defn smart-config
   "Fulfill missing configuration options using inferences."
-  [config]
-  (psm/smart-map (merge config-env config) config))
+  ([config]
+   (psm/smart-map (merge config-env config) config))
+  ([env config]
+   (psm/smart-map (merge env config-env config) config)))
+
+
 
 (defn- prop [k]
   {:type :prop :dispatch-key k :key k})
@@ -278,7 +282,7 @@
   "
   [env {:keys [::pco/op-name] :as config}]
   [map? (s/keys :req [::pco/op-name ::conn] :opt [::ident-attributes]) => map?]
-  (let [config'       (smart-config config)
+  (let [config'       (smart-config env config)
         datomic-index (index-schema config')]
     (-> env
         (assoc-in [::datomic-config op-name] config)
