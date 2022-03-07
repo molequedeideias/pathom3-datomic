@@ -2,7 +2,7 @@
  ["src/main"]
 
  :deps
- {com.wsscode/pathom3 {:mvn/version "2021.11.16-alpha"}
+ {com.wsscode/pathom3 {:mvn/version "2022.02.25-alpha"}
   juxt/crux-core      {:mvn/version "21.06-1.17.1-beta"}}
 
  :aliases
